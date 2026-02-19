@@ -46,10 +46,17 @@ if "consent" not in st.session_state:
 
 if not st.session_state.consent:
     st.title("🛡️ Secure Analysis Gateway")
-    st.info("Consent Required: Your information will not be stored, reused, shared, or used for training.")
-    if st.button("1 - Yes, I consent"):
-        st.session_state.consent = True
-        st.rerun()
+    st.info("Consent Required: Your information will not be stored, reused, shared, or used for training. [cite: 8-12]")
+    
+    col_y, col_n = st.columns(2)
+    with col_y:
+        if st.button("1 - Yes, I consent"):
+            st.session_state.consent = True
+            st.rerun()
+    with col_n:
+        if st.button("2 - No, I do not consent"):
+            st.error("Understood. I will not process any personal information. Let me know if you change your mind. [cite: 28-29]")
+            st.stop() # This stops the app execution immediately per guardrail 21
     st.stop()
 
 # --- 5. MAIN APP UI ---
