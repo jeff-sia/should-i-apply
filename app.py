@@ -54,3 +54,87 @@ with st.sidebar:
     st.header("🔑 API Key Tank")
     g_key = st.text_input("Gemini API Key", type="password")
     oa_key = st.text_input("OpenAI API Key", type="password")
+    or_key = st.text_input("OpenRouter Key", type="password")
+    groq_key = st.text_input("Groq Key (Fastest)", type="password")
+    di_key = st.text_input("DeepInfra Key (Cheapest)", type="password")
+    
+    st.markdown("---")
+    # Identify which engines are ready
+    available = []
+    if g_key: available.append("Gemini")
+    if oa_key: available.append("OpenAI")
+    if or_key: available.append("OpenRouter")
+    if groq_key: available.append("Groq")
+    if di_key: available.append("DeepInfra")
+    
+    if available:
+        mode = st.radio("Primary Engine", available)
+    else:
+        st.warning("No API keys detected.")
+        mode = None
+
+# --- 6. MAIN APP INTERFACE ---
+st.title("🚀 JobScore & Resume Optimizer")
+
+col_a, col_b = st.columns(2, gap="large")
+with col_a:
+    st.subheader("📋 1. Job Description")
+    st.file_uploader("Upload JD", type=["pdf", "docx"], key="jd_upload", on_change=update_jd)
+    st.session_state.jd_text = st.text_area("JD Content:", value=st.session_state.jd_text, height=300)
+with col_b:
+    st.subheader("📄 2. Your Resume")
+    st.file_uploader("Upload Resume", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
+    st.session_state.resume_text = st.text_area("Resume Content:", value=st.session_state.resume_text, height=300)
+
+# --- 7. ANALYSIS LOGIC (WITH SMART FAILOVER) ---
+if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
+    if not st.session_state.jd_text or not st.session_state.resume_text:
+        st.error("Please provide both a Job Description and a Resume.")
+    elif not mode:
+        st.error("Please provide an API key in the sidebar.")
+    else:
+        prompt = f"""
+        You are a brutally honest jobseeker assistant. Evaluate the RESUME against the JD.
+        Weights: Hard Skills (50%), Industry Experience (30%), Valued Extras (20%).
+        Formula: (H/5 * 50) + (I/5 * 30) + (V/5 * 20).
+        Output format: 'Self-Match Report'.
+        
+        JD: {st.session_state.jd_text}
+        RESUME: {st.session_state.resume_text}
+        """
+        
+        success = False
+        
+        # Priority Failover Logic
+        # 1. Try Gemini (if selected)
+        if (mode == "Gemini" or not success) and g_key:
+            try:
+                with st.spinner("Analyzing via Gemini..."):
+                    client = genai.Client(api_key=g_key)
+                    resp = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
+                    st.markdown(resp.text); success = True
+            except Exception as e:
+                st.warning(f"Gemini failed: {e}. Trying backup...")
+
+        # 2. Try Groq (Fastest backup)
+        if (mode == "Groq" or not success) and groq_key:
+            try:
+                with st.spinner("Analyzing via Groq (Llama 3.3)..."):
+                    client = Groq(api_key=groq_key)
+                    resp = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "user", "content": prompt}])
+                    st.markdown(resp.choices[0].message.content); success = True
+            except Exception as e:
+                st.warning(f"Groq failed: {e}. Trying next backup...")
+
+        # 3. Try DeepInfra (Cheapest backup)
+        if (mode == "DeepInfra" or not success) and di_key:
+            try:
+                with st.spinner("Analyzing via DeepInfra..."):
+                    client = OpenAI(api_key=di_key, base_url="https://api.deepinfra.com/v1/openai")
+                    resp = client.chat.completions.create(model="meta-llama/Llama-3.3-70B-Instruct", messages=[{"role": "user", "content": prompt}])
+                    st.markdown(resp.choices[0].message.content); success = True
+            except Exception as e:
+                st.warning(f"DeepInfra failed: {e}")
+
+        if not success:
+            st.error("All available engines failed. Check your API keys or credit balance.")
