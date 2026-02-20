@@ -7,7 +7,7 @@ import io
 # --- 1. CORE CONFIG ---
 st.set_page_config(page_title="JobScore Pro", layout="wide")
 
-# --- 2. DATA PERSISTENCE & SESSION STATE ---
+# --- 2. SESSION STATE (BACKEND LOGIC PERSISTENCE) ---
 if "consent" not in st.session_state: st.session_state.consent = False
 if "jd_text" not in st.session_state: st.session_state.jd_text = ""
 if "resume_text" not in st.session_state: st.session_state.resume_text = ""
@@ -40,7 +40,7 @@ if not st.session_state.consent:
     with col2:
         if st.button("2 - No, I do not consent"):
             st.error("Understood. I will not process any personal information. Let me know if you change your mind. [cite: 28-29]")
-            st.stop() # [cite: 21]
+            st.stop() 
     st.stop()
 
 # --- 5. MAIN INTERFACE ---
@@ -66,27 +66,34 @@ with col_b:
     st.file_uploader("Upload Resume", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
     st.session_state.resume_text = st.text_area("OR Paste Resume:", value=st.session_state.resume_text, height=350)
 
-# --- 6. SCORING BACKEND ---
+# --- 6. SCORING BACKEND & RUBRIC ---
 if st.button("🚀 Run Brutally Honest Analysis", type="primary", use_container_width=True):
     if st.session_state.jd_text and st.session_state.resume_text:
         with st.spinner("Executing Scoring Logic..."):
             try:
-                # STABLE 2026 ALIAS
-                model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+                # STABLE 2026 API ENDPOINT
+                model = genai.GenerativeModel('gemini-1.5-flash') 
                 
                 prompt = f"""
                 You are a brutally honest jobseeker assistant. Evaluate the RESUME against the JD.
                 
-                SCORING RULES:
-                - Hard Skills (H): 50%
-                - Industry Experience (I): 30%
-                - Valued Extras (V): 20%
-                - Formula: (H/5 * 50) + (I/5 * 30) + (V/5 * 20)
+                SCORING SYSTEM & RUBRIC:
+                1. Step 1: Extract criteria into Hard Skills (H), Industry Experience (I), and Valued Extras (V).
+                2. Step 2: Map Evidence. No cited evidence = 0 points. Do not infer or fabricate. [cite: 48-49]
+                3. Step 3: Score each on a 0-5 scale.
+                
+                WEIGHTS:
+                - Hard Skills = 50%
+                - Industry Experience = 30%
+                - Valued Extras = 20%
+                
+                FINAL FORMULA:
+                (H/5 * 50) + (I/5 * 30) + (V/5 * 20). Cap at 100%.
                 
                 STRICT GUIDELINES:
-                - Do not infer credentials. No evidence = 0 points. [cite: 48-49]
-                - Tone must be direct and neutral. No false encouragement.
-                - If score < 60%, trigger the '❌ Not Recommended' block.
+                - Be blunt, direct, and neutral. No false encouragement. [cite: 53-54]
+                - If the final score is < 60%, you MUST provide the '❌ Not Recommended' block.
+                - Output MUST follow the 'Self-Match Report' format.
                 
                 JD: {st.session_state.jd_text}
                 RESUME: {st.session_state.resume_text}
@@ -95,6 +102,6 @@ if st.button("🚀 Run Brutally Honest Analysis", type="primary", use_container_
                 st.markdown("---")
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"Analysis failed. Please check your API key. Error: {e}")
+                st.error(f"Analysis failed. Please check your API key and model name. Error: {e}")
     else:
-        st.error("Missing input data.")
+        st.error("Missing input data: Please provide both a JD and a Resume.")
