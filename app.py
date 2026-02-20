@@ -7,7 +7,7 @@ from docx import Document
 import io
 
 # --- 1. CONFIG & UI ---
-st.set_page_config(page_title="JobScore Pro: Infinite Edition", layout="wide")
+st.set_page_config(page_title="JobScore Pro: Precision Edition", layout="wide")
 
 def extract_text(uploaded_file):
     try:
@@ -32,7 +32,7 @@ def update_jd():
 def update_resume():
     if st.session_state.resume_upload: st.session_state.resume_text = extract_text(st.session_state.resume_upload)
 
-# --- 4. CONSENT GATE (SIDE-BY-SIDE) ---
+# --- 4. CONSENT GATE (MANDATORY) ---
 if not st.session_state.consent:
     st.title("🛡️ Secure Analysis Gateway")
     st.info("Consent Required: Your information is processed in real-time and never stored for training.")
@@ -47,7 +47,7 @@ if not st.session_state.consent:
             st.stop()
     st.stop()
 
-# --- 5. SIDEBAR ---
+# --- 5. SIDEBAR (API KEY TANK) ---
 with st.sidebar:
     st.header("🔑 API Key Tank")
     g_key = st.text_input("Gemini API Key", type="password")
@@ -78,39 +78,56 @@ with col_b:
     st.file_uploader("Upload Resume", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
     st.session_state.resume_text = st.text_area("Resume Content:", value=st.session_state.resume_text, height=300)
 
-# --- 7. ANALYSIS LOGIC ---
+# --- 7. THE PRECISION ANALYSIS ENGINE ---
 if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
     if not st.session_state.jd_text or not st.session_state.resume_text:
         st.error("Please provide both documents.")
     elif not mode:
         st.error("Add an API key in the sidebar.")
     else:
-        # THE RESTORED MASTER PROMPT
+        # THE GLOBAL MASTER PROMPT: Standardizes thinking across ALL models
         prompt = f"""
-        You are a brutally honest jobseeker assistant. Evaluate the RESUME against the JD.
-        
-        STRICT SCORING RUBRIC:
-        1. Hard Skills (H): Score 0-5. (Weight: 50%)
-        2. Industry Experience (I): Score 0-5. (Weight: 30%)
-        3. Valued Extras (V): Score 0-5. (Weight: 20%)
-        
-        FORMULA: (H/5 * 50) + (I/5 * 30) + (V/5 * 20)
-        
-        TIER MAPPING:
-        - 90-100%: Excellent Fit
-        - 75-89%: Strong Fit
-        - 60-74%: Moderate Fit
-        - Below 60%: Low Fit (Trigger '❌ Not Recommended' block)
-        
-        OUTPUT FORMAT:
+        You are a brutally honest jobseeker assistant. Your goal is to produce a mathematical match score with ZERO inference. 
+
+        PHASE 1: EVIDENCE MAPPING (Internal Thinking)
+        - List every key requirement from the JD.
+        - For each, find the EXACT sentence in the Resume that satisfies it.
+        - If no exact match exists, mark it as "No Evidence Found".
+
+        PHASE 2: CATEGORICAL SCORING (Scale 0-5)
+        Follow these strict definitions to ensure <5% variance:
+        - 5: Every single JD requirement in this category is met with explicit evidence.
+        - 4: Majority of requirements met; 1 minor gap.
+        - 3: Core requirements met; significant secondary gaps.
+        - 2: Only 1-2 core requirements met.
+        - 1: Mentioned in passing but no evidence of execution.
+        - 0: No evidence found.
+
+        CATEGORIES & WEIGHTS:
+        1. Hard Skills (H) - 50%: Technical tools, certifications, specific methodologies.
+        2. Industry Experience (I) - 30%: Years in role, sector-specific tenure, seniority level.
+        3. Valued Extras (V) - 20%: Soft skills, "nice-to-haves," culture-add.
+
+        PHASE 3: FINAL CALCULATION
+        Formula: ( (H_Score/5)*50 ) + ( (I_Score/5)*30 ) + ( (V_Score/5)*20 )
+        Round the Final Score to the nearest whole number.
+
+        PHASE 4: OUTPUT GENERATION
+        TIER MAPPING: 90-100% (Excellent), 75-89% (Strong), 60-74% (Moderate), <60% (Low).
+
+        Use this EXACT format:
         ### Your Self-Match Report
         **Final Match Score**: [X]%
         **Tier**: [Tier Name]
         ---
-        **1. Hard Skills (H)**: [Brief explanation]
-        **2. Industry Experience (I)**: [Brief explanation]
-        **3. Valued Extras (V)**: [Brief explanation]
+        **1. Hard Skills (H)**: [Cite specific evidence or missing gaps]
+        **2. Industry Experience (I)**: [Cite tenure and sector evidence]
+        **3. Valued Extras (V)**: [Cite extras found or missing]
         
+        SUMMARY: [1-2 sentences of brutally honest advice]
+        [If score < 60%] ❌ **Not Recommended**: [Explain why applying is a waste of time]
+        [If score >= 60%] 🟢 **Action Plan**: [List 2 specific things to add to the resume]
+
         JD: {st.session_state.jd_text}
         Resume: {st.session_state.resume_text}
         """
@@ -136,9 +153,8 @@ if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
                         client = OpenAI(api_key=oa_key)
                         resp = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
                         st.markdown(resp.choices[0].message.content); success = True
-                # (Add DeepInfra/OpenRouter logic similarly)
             except Exception as e:
                 st.warning(f"⚠️ {engine} failed. Trying backup...")
 
         if not success:
-            st.error("❌ All engines failed.")
+            st.error("❌ All engines failed. Please check your API keys.")
