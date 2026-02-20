@@ -7,12 +7,12 @@ import io
 # --- 1. CORE CONFIG ---
 st.set_page_config(page_title="JobScore Pro", layout="wide")
 
-# --- 2. SESSION STATE (BACKEND LOGIC PERSISTENCE) ---
+# --- 2. SESSION STATE & BACKEND LOGIC ---
 if "consent" not in st.session_state: st.session_state.consent = False
 if "jd_text" not in st.session_state: st.session_state.jd_text = ""
 if "resume_text" not in st.session_state: st.session_state.resume_text = ""
 
-# --- 3. UNIVERSAL FILE PARSER ---
+# --- 3. FILE PARSING ---
 def extract_text(uploaded_file):
     if uploaded_file.type == "application/pdf":
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
@@ -27,27 +27,26 @@ def update_jd():
 def update_resume():
     if st.session_state.resume_upload: st.session_state.resume_text = extract_text(st.session_state.resume_upload)
 
-# --- 4. GLOBAL CONSENT GATE (MANDATORY) ---
+# --- 4. MANDATORY CONSENT GATE ---
 if not st.session_state.consent:
     st.title("🛡️ Secure Analysis Gateway")
-    st.info("Consent Required: Your information will not be stored, reused, shared, or used for training. [cite: 8-12]")
+    st.info("Consent Required: Your information will not be stored, reused, shared, or used for training. [cite: 12]")
     
-    col1, col2 = st.columns(2)
-    with col1:
+    col_y, col_n = st.columns(2)
+    with col_y:
         if st.button("1 - Yes, I consent"):
             st.session_state.consent = True
             st.rerun()
-    with col2:
+    with col_n:
         if st.button("2 - No, I do not consent"):
-            st.error("Understood. I will not process any personal information. Let me know if you change your mind. [cite: 28-29]")
+            st.error("Understood. I will not process any personal information. Let me know if you change your mind. [cite: 29]")
             st.stop() 
     st.stop()
 
 # --- 5. MAIN INTERFACE ---
 st.title("🚀 JobScore & Resume Optimizer")
-
 with st.sidebar:
-    st.header("⚙️ API Configuration")
+    st.header("⚙️ API Setup")
     api_key = st.text_input("Enter Gemini API Key", type="password")
     if api_key: genai.configure(api_key=api_key)
 
@@ -58,42 +57,34 @@ if not api_key:
 col_a, col_b = st.columns(2, gap="large")
 with col_a:
     st.subheader("📋 1. Job Description")
-    st.file_uploader("Upload JD", type=["pdf", "docx"], key="jd_upload", on_change=update_jd)
+    st.file_uploader("Upload JD (PDF/Docx)", type=["pdf", "docx"], key="jd_upload", on_change=update_jd)
     st.session_state.jd_text = st.text_area("OR Paste JD:", value=st.session_state.jd_text, height=350)
-
 with col_b:
     st.subheader("📄 2. Your Resume")
-    st.file_uploader("Upload Resume", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
+    st.file_uploader("Upload Resume (PDF/Docx)", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
     st.session_state.resume_text = st.text_area("OR Paste Resume:", value=st.session_state.resume_text, height=350)
 
-# --- 6. SCORING BACKEND & RUBRIC ---
+# --- 6. SCORING ENGINE ---
 if st.button("🚀 Run Brutally Honest Analysis", type="primary", use_container_width=True):
     if st.session_state.jd_text and st.session_state.resume_text:
-        with st.spinner("Executing Scoring Logic..."):
+        with st.spinner("Calculating Fit Score..."):
             try:
-                # STABLE 2026 API ENDPOINT
+                # 2026 STABLE MODEL PATH
                 model = genai.GenerativeModel('gemini-1.5-flash') 
                 
                 prompt = f"""
                 You are a brutally honest jobseeker assistant. Evaluate the RESUME against the JD.
                 
-                SCORING SYSTEM & RUBRIC:
-                1. Step 1: Extract criteria into Hard Skills (H), Industry Experience (I), and Valued Extras (V).
-                2. Step 2: Map Evidence. No cited evidence = 0 points. Do not infer or fabricate. [cite: 48-49]
-                3. Step 3: Score each on a 0-5 scale.
+                SCORING RUBRIC:
+                1. Hard Skills (H): 50%
+                2. Industry Experience (I): 30%
+                3. Valued Extras (V): 20%
+                Formula: (H/5 * 50) + (I/5 * 30) + (V/5 * 20).
                 
-                WEIGHTS:
-                - Hard Skills = 50%
-                - Industry Experience = 30%
-                - Valued Extras = 20%
-                
-                FINAL FORMULA:
-                (H/5 * 50) + (I/5 * 30) + (V/5 * 20). Cap at 100%.
-                
-                STRICT GUIDELINES:
-                - Be blunt, direct, and neutral. No false encouragement. [cite: 53-54]
-                - If the final score is < 60%, you MUST provide the '❌ Not Recommended' block.
-                - Output MUST follow the 'Self-Match Report' format.
+                STRICT RULES:
+                - Do not infer credentials. No evidence = 0. [cite: 38, 48-49]
+                - If score < 60%, trigger '❌ Not Recommended' block.
+                - Output format: 'Self-Match Report'.
                 
                 JD: {st.session_state.jd_text}
                 RESUME: {st.session_state.resume_text}
@@ -102,6 +93,6 @@ if st.button("🚀 Run Brutally Honest Analysis", type="primary", use_container_
                 st.markdown("---")
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"Analysis failed. Please check your API key and model name. Error: {e}")
+                st.error(f"Error: {e}. Check API Key or Model availability.")
     else:
-        st.error("Missing input data: Please provide both a JD and a Resume.")
+        st.error("Please provide both a JD and a Resume.")
