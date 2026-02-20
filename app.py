@@ -9,15 +9,19 @@ import io
 st.set_page_config(page_title="JobScore Pro: Robust Edition", layout="wide")
 
 def extract_text(uploaded_file):
-    if uploaded_file.type == "application/pdf":
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-        return "".join([page.extract_text() for page in pdf_reader.pages])
-    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        doc = Document(io.BytesIO(uploaded_file.read()))
-        return "\n".join([para.text for para in doc.paragraphs])
+    """Parses PDF or DOCX and returns text."""
+    try:
+        if uploaded_file.type == "application/pdf":
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+            return "".join([page.extract_text() for page in pdf_reader.pages])
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = Document(io.BytesIO(uploaded_file.read()))
+            return "\n".join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
     return ""
 
-# --- 2. SESSION STATE INITIALIZATION ---
+# --- 2. SESSION STATE ---
 if "consent" not in st.session_state:
     st.session_state.consent = False
 if "jd_text" not in st.session_state:
@@ -36,7 +40,6 @@ def update_resume():
 
 # --- 4. THE MASTER APP TOGGLE ---
 if not st.session_state.consent:
-    # --- CONSENT INTERFACE ---
     st.title("🛡️ Secure Analysis Gateway")
     st.info("Consent Required: Your information will be used only to process your request. It will not be stored, reused, shared, or used for training.")
     
@@ -49,7 +52,7 @@ if not st.session_state.consent:
         if st.button("2 - No, I do not consent"):
             st.error("Understood. I will not process any personal information.")
 else:
-    # --- MAIN APP INTERFACE (Shows only after consent) ---
+    # --- MAIN APP INTERFACE ---
     st.title("🚀 JobScore & Resume Optimizer")
     
     with st.sidebar:
@@ -88,26 +91,52 @@ else:
             - Valued Extras (V): 20% weight
             - Formula: (H/5 * 50) + (I/5 * 30) + (V/5 * 20).
             
-            Follow 'Self-Match Report' structure. 
-            If score < 60%, output '❌ Not Recommended'.
+            STRICT GUIDELINES:
+            - Evidence only. No assumptions.
+            - Format output as a 'Self-Match Report'.
+            - If score < 60%, trigger the '❌ Not Recommended' block.
             
             JD: {st.session_state.jd_text}
             RESUME: {st.session_state.resume_text}
             """
             
             success = False
-            if mode == "Gemini" and gemini_key:
-                try:
-                    with st.spinner("Analyzing via Gemini..."):
-                        client = genai.Client(api_key=gemini_key)
-                        response = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
-                        st.markdown("---")
-                        st.markdown(response.text)
-                        success = True
-                except Exception as e:
-                    st.warning(f"Gemini failed: {e}. Trying OpenRouter...")
+            
+            # --- Primary: Gemini ---
+            if mode == "Gemini":
+                if not gemini_key:
+                    st.error("Please provide a Gemini API Key.")
+                else:
+                    try:
+                        with st.spinner("Analyzing via Gemini..."):
+                            client = genai.Client(api_key=gemini_key)
+                            response = client.models.generate_content(
+                                model="gemini-3-flash-preview", 
+                                contents=prompt
+                            )
+                            st.markdown("---")
+                            st.markdown(response.text)
+                            success = True
+                    except Exception as e:
+                        st.warning(f"Gemini Engine failed: {e}. Trying OpenRouter failover...")
 
+            # --- Failover/Secondary: OpenRouter ---
             if not success and or_key:
                 try:
-                    with st.spinner("Analyzing via OpenRouter..."):
-                        or_client = OpenAI
+                    with st.spinner("Analyzing via OpenRouter (Claude)..."):
+                        or_client = OpenAI(
+                            base_url="https://openrouter.ai/api/v1", 
+                            api_key=or_key
+                        )
+                        completion = or_client.chat.completions.create(
+                            model="anthropic/claude-3.5-sonnet",
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        st.markdown("---")
+                        st.markdown(completion.choices[0].message.content)
+                        success = True
+                except Exception as e:
+                    st.error(f"Failover Error: Both engines failed. Detail: {e}")
+            
+            if not success and not (gemini_key or or_key):
+                st.error("No API keys detected. Please check the sidebar.")
