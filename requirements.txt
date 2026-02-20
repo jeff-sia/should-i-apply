@@ -1,5 +1,6 @@
 streamlit
 google-genai
 openai
+groq
 PyPDF2
 python-docx
