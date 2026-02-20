@@ -4,13 +4,14 @@ import PyPDF2
 from docx import Document
 import io
 
-# --- 1. CONFIG & UI STYLING ---
+# --- 1. GLOBAL CONFIG & UI ---
 st.set_page_config(page_title="JobScore Pro", layout="wide")
 
 st.markdown("""
     <style>
     .stTextArea textarea { border-radius: 10px; border: 1px solid #ddd; }
     .stButton>button { border-radius: 20px; font-weight: bold; height: 3em; }
+    .main { background-color: #fcfcfc; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -24,7 +25,7 @@ def extract_text(uploaded_file):
         return "\n".join([para.text for para in doc.paragraphs])
     return ""
 
-# --- 2. SESSION STATE (BACKEND CONDITIONS) ---
+# --- 2. SESSION STATE MANAGEMENT ---
 if "jd_text" not in st.session_state: st.session_state.jd_text = ""
 if "resume_text" not in st.session_state: st.session_state.resume_text = ""
 if "consent" not in st.session_state: st.session_state.consent = False
@@ -38,10 +39,10 @@ def update_resume():
     if st.session_state.resume_upload:
         st.session_state.resume_text = extract_text(st.session_state.resume_upload)
 
-# --- 4. MANDATORY CONSENT GATE (RESTORED) ---
+# --- 4. MANDATORY CONSENT GATE ---
 if not st.session_state.consent:
     st.title("🛡️ Secure Analysis Gateway")
-    st.info("Consent Required: Your information will not be stored, reused, shared, or used for training.")
+    st.info("Consent Required: You may be asked to share your resume. This information will be used only to process your request within this conversation. It will not be stored, reused, shared, or used for training. [cite: 8-12]")
     
     col_y, col_n = st.columns(2)
     with col_y:
@@ -50,7 +51,7 @@ if not st.session_state.consent:
             st.rerun()
     with col_n:
         if st.button("2 - No, I do not consent"):
-            st.error("Understood. I will not process any personal information. Let me know if you change your mind.")
+            st.error("Understood. I will not process any personal information. Let me know if you change your mind. [cite: 28-29]")
             st.stop()
     st.stop()
 
@@ -59,7 +60,7 @@ st.title("🚀 JobScore & Resume Optimizer")
 
 with st.sidebar:
     st.header("⚙️ Configuration")
-    api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
+    api_key = st.text_input("Enter Gemini API Key", type="password", help="Get your key at aistudio.google.com")
     if api_key:
         genai.configure(api_key=api_key)
 
@@ -81,31 +82,36 @@ with col2:
 
 st.markdown("---")
 
-# --- 6. SCORING RUBRIC (PRESERVED LOGIC) ---
+# --- 6. SCORING ENGINE (THE BRAIN) ---
 if st.button("🚀 Run Brutally Honest Analysis", type="primary", use_container_width=True):
     if st.session_state.jd_text and st.session_state.resume_text:
-        with st.spinner("Analyzing with Gemini 3 Flash..."):
+        with st.spinner("Analyzing match metrics..."):
             try:
-                # UPDATED TO GEMINI 3 FLASH FOR 2026 COMPATIBILITY
-                model = genai.GenerativeModel('gemini-3-flash') 
+                # UPDATED TO 'gemini-3-flash-latest' FOR 2026 STABILITY
+                model = genai.GenerativeModel('gemini-3-flash-latest') 
                 
-                # INTACT SCORING RUBRIC PROMPT
+                # PRESERVED BACKEND CONDITIONS & RUBRIC
                 full_prompt = f"""
                 You are a brutally honest jobseeker assistant. 
-                Evaluate this Resume against the Job Description.
+                Evaluate the RESUME against the JD using the SCORING SYSTEM below.
+                
+                BACKEND CONDITIONS:
+                1. No assumptions. If it's not on the resume, the score is 0. [cite: 48-49]
+                2. SCORING RUBRIC (0-5 per item):
+                   - Hard Skills (H): 50% weight
+                   - Industry Experience (I): 30% weight
+                   - Valued Extras (V): 20% weight
+                3. FINAL FORMULA: (H/5 * 50) + (I/5 * 30) + (V/5 * 20)
+                4. OUTPUT: Use the 'Self-Match Report' format.
+                5. FAILSAFE: If score < 60%, trigger '❌ Not Recommended' block.
+                
                 JD: {st.session_state.jd_text}
                 RESUME: {st.session_state.resume_text}
-                
-                RULES:
-                - Never infer credentials. Use only evidence from the resume.
-                - Formula: (Hard Skills/5 * 50) + (Industry Experience/5 * 30) + (Valued Extras/5 * 20).
-                - Final Match Score capped at 100%.
-                - Use 'Self-Match Report' format. 
-                - If score < 60%, provide the 'Not Recommended' block.
                 """
                 response = model.generate_content(full_prompt)
                 st.markdown(response.text)
+                st.balloons() if "Excellent" in response.text else None
             except Exception as e:
-                st.error(f"Error: {e}. Ensure your API Key is valid.")
+                st.error(f"Analysis failed. This is often due to an invalid API key or model name. Error: {e}")
     else:
         st.error("Please provide both a Job Description and a Resume to proceed.")
