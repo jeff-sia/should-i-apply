@@ -87,7 +87,7 @@ if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
     else:
         # MASTER PROMPT: Enforces SIA Standard
         prompt = f"""
-        ACT AS: A Brutally Honest HR Executive. 
+        ACT AS: A Brutally Honest Recruitment Expert. 
         TASK: Produce a 'Self-Match Report' following the exact hierarchy and scoring rigor of the SIA Gold Standard.
 
         PHASE 1: EVIDENCE MAPPING (Internal Thinking)
