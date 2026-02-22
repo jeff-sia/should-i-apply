@@ -128,7 +128,7 @@ if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
 
         ---
         ### 📝 Summary
-        [Brutally honest 2-sentence summary of the match]
+        [Mention the score and their tier. Follow with a brutally honest 2-sentence summary of the match]
 
         ### 🟢 Action Plan (Strategic Positioning)
         1. [Advice on shifting positioning to match this specific role]
