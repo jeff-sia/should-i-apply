@@ -107,7 +107,7 @@ if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
         Use the following EXACT Markdown hierarchy:
 
         ### Your Self-Match Report is [Score]%
-        ##**Tier**: [Excellent/Strong/Moderate/Low Fit]
+        **Tier**: [Excellent/Strong/Moderate/Low Fit]
         **Position**: [Parsed Role]
         **Company**: [Parsed Company]
 
