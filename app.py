@@ -71,11 +71,11 @@ st.title("🚀 JobScore & Resume Optimizer")
 col_a, col_b = st.columns(2, gap="large")
 with col_a:
     st.subheader("📋 1. Job Description")
-    st.file_uploader("Upload JD", type=["pdf", "docx"], key="jd_upload", on_change=update_jd)
+    st.file_uploader("Upload JD or paste in the text field below", type=["pdf", "docx"], key="jd_upload", on_change=update_jd)
     st.session_state.jd_text = st.text_area("JD Content:", value=st.session_state.jd_text, height=300)
 with col_b:
     st.subheader("📄 2. Your Resume")
-    st.file_uploader("Upload Resume", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
+    st.file_uploader("Upload Resume or paste in the text field below", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
     st.session_state.resume_text = st.text_area("Resume Content:", value=st.session_state.resume_text, height=300)
 
 # --- 7. THE PRECISION SIA ANALYSIS ENGINE ---
