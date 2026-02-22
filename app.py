@@ -7,7 +7,7 @@ from docx import Document
 import io
 
 # --- 1. CONFIG & UI ---
-st.set_page_config(page_title="JobScore Pro: Precision Edition", layout="wide")
+st.set_page_config(page_title="JobScore Pro: SIA Standard", layout="wide")
 
 def extract_text(uploaded_file):
     try:
@@ -78,55 +78,64 @@ with col_b:
     st.file_uploader("Upload Resume", type=["pdf", "docx"], key="resume_upload", on_change=update_resume)
     st.session_state.resume_text = st.text_area("Resume Content:", value=st.session_state.resume_text, height=300)
 
-# --- 7. THE PRECISION ANALYSIS ENGINE ---
+# --- 7. THE PRECISION SIA ANALYSIS ENGINE ---
 if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
     if not st.session_state.jd_text or not st.session_state.resume_text:
         st.error("Please provide both documents.")
     elif not mode:
         st.error("Add an API key in the sidebar.")
     else:
-        # THE GLOBAL MASTER PROMPT: Standardizes thinking across ALL models
+        # MASTER PROMPT: Enforces SIA Standard
         prompt = f"""
-        You are a brutally honest jobseeker assistant. Your goal is to produce a mathematical match score with ZERO inference. 
+        ACT AS: A Brutally Honest HR Executive. 
+        TASK: Produce a 'Self-Match Report' following the exact hierarchy and scoring rigor of the SIA Gold Standard.
 
         PHASE 1: EVIDENCE MAPPING (Internal Thinking)
         - List every key requirement from the JD.
-        - For each, find the EXACT sentence in the Resume that satisfies it.
-        - If no exact match exists, mark it as "No Evidence Found".
+        - Map EXACT sentences from the Resume to these requirements.
+        - No evidence = 0 points. Do not infer skills.
 
-        PHASE 2: CATEGORICAL SCORING (Scale 0-5)
-        Follow these strict definitions to ensure <5% variance:
-        - 5: Every single JD requirement in this category is met with explicit evidence.
-        - 4: Majority of requirements met; 1 minor gap.
-        - 3: Core requirements met; significant secondary gaps.
-        - 2: Only 1-2 core requirements met.
-        - 1: Mentioned in passing but no evidence of execution.
-        - 0: No evidence found.
-
-        CATEGORIES & WEIGHTS:
-        1. Hard Skills (H) - 50%: Technical tools, certifications, specific methodologies.
-        2. Industry Experience (I) - 30%: Years in role, sector-specific tenure, seniority level.
-        3. Valued Extras (V) - 20%: Soft skills, "nice-to-haves," culture-add.
-
-        PHASE 3: FINAL CALCULATION
-        Formula: ( (H_Score/5)*50 ) + ( (I_Score/5)*30 ) + ( (V_Score/5)*20 )
-        Round the Final Score to the nearest whole number.
-
-        PHASE 4: OUTPUT GENERATION
-        TIER MAPPING: 90-100% (Excellent), 75-89% (Strong), 60-74% (Moderate), <60% (Low).
-
-        Use this EXACT format:
-        ### Your Self-Match Report
-        **Final Match Score**: [X]%
-        **Tier**: [Tier Name]
-        ---
-        **1. Hard Skills (H)**: [Cite specific evidence or missing gaps]
-        **2. Industry Experience (I)**: [Cite tenure and sector evidence]
-        **3. Valued Extras (V)**: [Cite extras found or missing]
+        PHASE 2: SCORING ALGORITHM
+        1. Hard Skills (H): Scale 0-5. Weight 50%.
+        2. Industry Experience (I): Scale 0-5. Weight 30%.
+        3. Valued Extras (V): Scale 0-5. Weight 20%.
         
-        SUMMARY: [1-2 sentences of brutally honest advice]
-        [If score < 60%] ❌ **Not Recommended**: [Explain why applying is a waste of time]
-        [If score >= 60%] 🟢 **Action Plan**: [List 2 specific things to add to the resume]
+        FORMULA: (H_Score/5 * 50) + (I_Score/5 * 30) + (V_Score/5 * 20).
+        Round to the nearest whole number.
+
+        PHASE 3: SIA OUTPUT GENERATION (Strict Structure)
+        Use the following EXACT Markdown hierarchy:
+
+        ### Your Self-Match Report is [Score]%
+        **Position**: [Parsed Role]
+        **Company**: [Parsed Company]
+        **Tier**: [Excellent/Strong/Moderate/Low Fit]
+
+        ---
+        ### 🔹 1. Hard Skills Fit (50%)
+        **Score**: [X]/5 ([X]%) - **Weighted**: [X]/50
+        | Requirement | Match | Evidence |
+        | :--- | :--- | :--- |
+        | [Requirement Name] | [✅ or ❌] | [Direct Evidence Quote or "No direct mention"] |
+
+        ### 🔹 2. Industry Experience Fit (30%)
+        **Score**: [X]/5 ([X]%) - **Weighted**: [X]/30
+        - [Mapping of tenure, sector-specific experience, and seniority]
+
+        ### 🔹 3. Valued Extras Fit (20%)
+        **Score**: [X]/5 ([X]%) - **Weighted**: [X]/20
+        - [Assets, soft skills, and certifications]
+
+        ---
+        ### 📝 Summary
+        [Brutally honest 2-sentence summary of the match]
+
+        ### 🟢 Action Plan (Strategic Positioning)
+        1. [Advice on shifting positioning to match this specific role]
+        2. **Resume Optimization Module**: Rewrite a specific bullet point from the current resume to better align with the JD requirements.
+
+        ### 🎯 Strategic Advice
+        [Final 'Apply' or 'Veto' recommendation]
 
         JD: {st.session_state.jd_text}
         Resume: {st.session_state.resume_text}
@@ -151,7 +160,17 @@ if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
                 elif engine == "OpenAI" and oa_key:
                     with st.spinner("Analyzing via OpenAI..."):
                         client = OpenAI(api_key=oa_key)
-                        resp = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+                        resp = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
+                        st.markdown(resp.choices[0].message.content); success = True
+                elif engine == "DeepInfra" and di_key:
+                    with st.spinner("Analyzing via DeepInfra..."):
+                        client = OpenAI(api_key=di_key, base_url="https://api.deepinfra.com/v1/openai")
+                        resp = client.chat.completions.create(model="meta-llama/Llama-3.3-70B-Instruct", messages=[{"role": "user", "content": prompt}])
+                        st.markdown(resp.choices[0].message.content); success = True
+                elif engine == "OpenRouter" and or_key:
+                    with st.spinner("Analyzing via OpenRouter..."):
+                        client = OpenAI(api_key=or_key, base_url="https://openrouter.ai/api/v1")
+                        resp = client.chat.completions.create(model="anthropic/claude-3.5-sonnet", messages=[{"role": "user", "content": prompt}])
                         st.markdown(resp.choices[0].message.content); success = True
             except Exception as e:
                 st.warning(f"⚠️ {engine} failed. Trying backup...")
