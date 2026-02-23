@@ -132,7 +132,7 @@ if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
 
         ### 🟢 Action Plan (Strategic Positioning)
         1. [Advice on shifting positioning to match this specific role]
-        2. **Resume Optimization Module**: If score is <60, do not trigger. If socre is >60, rewrite a specific bullet point from the current resume to better align with the JD requirements.
+        2. **Resume Optimization Module**[trigger only if score >60%]: Rewrite a specific bullet point from the current resume to better align with the JD requirements.
 
         ### 🎯 Strategic Advice
         [Final 'Apply' or 'Do Not Apply' recommendation]
